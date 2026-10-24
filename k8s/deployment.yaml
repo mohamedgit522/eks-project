@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: eks-project-app
-        image: 646322278086.dkr.ecr.eu-west-1.amazonaws.com/eks-project-app:latest
+        image: 646322278086.dkr.ecr.eu-west-1.amazonaws.com/eks-project-app:45fe08f8cf300f6f62b2048b0c8fa1c13040b61d
         ports:
         - containerPort: 5000
