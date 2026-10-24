@@ -15,13 +15,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Debug OIDC token
-        run: |
-          curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | \
-          python3 -c "import sys,json,base64; t=json.load(sys.stdin)['value'].split('.')[1]; print(json.loads(base64.b64decode(t+'==')))"
-
       - name: Checkout code
         uses: actions/checkout@v4
 
