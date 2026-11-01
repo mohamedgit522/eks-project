@@ -87,8 +87,8 @@ eks-project/
 └── .github/
     └── workflows/
         └── deploy.yml
-​```
-
+​
+```
 ---
 
 ## CI/CD Pipeline
