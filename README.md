@@ -61,30 +61,33 @@ EKS Cluster (eu-west-1)
 
 ## Repository Structure
 
-```
-
+​```
 eks-project/
 ├── app/
-│ ├── app.py
-│ ├── requirements.txt
-│ └── Dockerfile
+│   ├── app.py
+│   ├── requirements.txt
+│   └── Dockerfile
 ├── k8s/
-│ ├── deployment.yaml
-│ ├── service.yaml
-│ ├── ingress.yaml
-│ └── clusterissuer.yaml
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   └── clusterissuer.yaml
 ├── infra/
-│ ├── main.tf
-│ ├── variables.tf
-│ ├── outputs.tf
-│ └── modules/
-│ ├── vpc/
-│ └── eks/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── modules/
+│       ├── vpc/
+│       └── eks/
+├── screenshots/
+│   ├── argocd-synced.png
+│   ├── grafana-cluster.png
+│   └── app-live.png
+├── argocd-app.yaml
 └── .github/
-└── workflows/
-└── deploy.yml
-
-```
+    └── workflows/
+        └── deploy.yml
+​```
 
 ---
 
