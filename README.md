@@ -6,40 +6,38 @@ A production-style Kubernetes project built on AWS EKS. Covers infrastructure pr
 
 ## What This Project Does
 
-A Flask app runs as a containerised workload on an EKS cluster. Every push to `main` triggers a GitHub Actions pipeline that builds a new Docker image, tags it with the commit SHA, and pushes it to ECR. The pipeline then updates the Kubernetes deployment manifest with the new image tag and commits the change back to the repo. ArgoCD — running inside the cluster — detects the change and rolls out the new version automatically, with no manual `kubectl apply` and no cluster credentials stored in the pipeline.
+A Flask app runs as a containerised workload on an EKS cluster. Every push to `main` triggers a GitHub Actions pipeline that builds a new Docker image, pushes it to ECR, and updates the deployment manifest. ArgoCD detects the change in Git and rolls it out to the cluster without any manual intervention. Prometheus scrapes metrics from every namespace, and Grafana surfaces them on a live dashboard.
 
-The entire infrastructure is defined in Terraform. Tear it down, run `terraform apply`, and the cluster is back in under 15 minutes. Prometheus scrapes metrics from every namespace in the cluster, and Grafana puts them on a live dashboard so you can see exactly what's running and where resources are going.
+The whole infrastructure — VPC, subnets, EKS cluster, node groups, IAM roles — is defined in Terraform and can be torn down and rebuilt from scratch in under 15 minutes.
 
 ---
 
 ## Architecture
 
-```
-
+<pre>
 Developer pushes to main
-│
-▼
+        │
+        ▼
 GitHub Actions CI/CD Pipeline
-├── Build Docker image
-├── Tag with commit SHA
-├── Push to ECR
-└── Update k8s/deployment.yaml with new image tag
-│
-▼
+  ├── Build Docker image
+  ├── Tag with commit SHA
+  ├── Push to ECR
+  └── Update k8s/deployment.yaml with new image tag
+        │
+        ▼
 ArgoCD (running in cluster)
-├── Detects change in k8s/ folder
-├── Compares desired state (Git) vs live state (cluster)
-└── Syncs automatically — rolls out new pods
-│
-▼
+  ├── Detects change in k8s/ folder
+  ├── Compares desired state (Git) vs live state (cluster)
+  └── Syncs automatically — rolls out new pods
+        │
+        ▼
 EKS Cluster (eu-west-1)
-├── 2x worker nodes (managed node group)
-├── Flask app — 2 replicas behind a LoadBalancer
-├── cert-manager — handles TLS certificates
-├── Prometheus — scrapes metrics across all namespaces
-└── Grafana — dashboards for CPU, memory, pod health
-
-```
+  ├── 2x worker nodes (managed node group)
+  ├── Flask app — 2 replicas behind a LoadBalancer
+  ├── cert-manager — handles TLS certificates
+  ├── Prometheus — scrapes metrics across all namespaces
+  └── Grafana — dashboards for CPU, memory, pod health
+</pre>
 
 ---
 
@@ -61,41 +59,41 @@ EKS Cluster (eu-west-1)
 
 ## Repository Structure
 
-​```
-    eks-project/
-    ├── app/
-    │   ├── app.py
-    │   ├── requirements.txt
-    │   └── Dockerfile
-    ├── k8s/
-    │   ├── deployment.yaml
-    │   ├── service.yaml
-    │   ├── ingress.yaml
-    │   └── clusterissuer.yaml
-    ├── infra/
-    │   ├── main.tf
-    │   ├── variables.tf
-    │   ├── outputs.tf
-    │   └── modules/
-    │       ├── vpc/
-    │       └── eks/
-    ├── screenshots/
-    │   ├── argocd-synced.png
-    │   ├── grafana-cluster.png
-    │   └── app-live.png
-    ├── argocd-app.yaml
-    └── .github/
-        └── workflows/
-            └── deploy.yml
-​
-```
+<pre>
+eks-project/
+├── app/
+│   ├── app.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── k8s/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   └── clusterissuer.yaml
+├── infra/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── modules/
+│       ├── vpc/
+│       └── eks/
+├── screenshots/
+│   ├── argocd-synced.png
+│   ├── grafana-cluster.png
+│   └── app-live.png
+├── argocd-app.yaml
+└── .github/
+    └── workflows/
+        └── deploy.yml
+</pre>
+
 ---
 
 ## CI/CD Pipeline
 
-The pipeline uses OIDC authentication — no AWS access keys stored in GitHub. GitHub exchanges a signed token with AWS at runtime to assume an IAM role scoped to exactly what the pipeline needs: push to ECR, nothing else.
+The pipeline uses **OIDC authentication** — no AWS access keys stored in GitHub. GitHub exchanges a signed token with AWS at runtime to assume an IAM role scoped to exactly what the pipeline needs (ECR push, nothing else).
 
-On every push to `main`:
+**On every push to `main`:**
 
 1. Authenticate to AWS via OIDC
 2. Build Docker image, tag with the commit SHA
@@ -112,11 +110,11 @@ The image tag is always the commit SHA — so every deployment is traceable back
 
 ArgoCD runs inside the cluster and watches the `k8s/` folder in this repo. It polls every 3 minutes and syncs automatically when it detects drift between what's in Git and what's running in the cluster.
 
-Why this matters over direct `kubectl apply`:
+**Why this matters over direct `kubectl apply`:**
 - Every change to the cluster is a Git commit — full audit trail
 - Roll back any deployment by reverting a commit
 - The pipeline never needs cluster credentials
-- If someone manually changes something in the cluster, ArgoCD reverts it (`selfHeal: true`)
+- If someone manually changes something in the cluster, ArgoCD reverts it (selfHeal: true)
 
 ---
 
@@ -124,14 +122,14 @@ Why this matters over direct `kubectl apply`:
 
 Everything is provisioned with Terraform using a remote S3 backend with DynamoDB state locking.
 
-What Terraform manages:
+**What Terraform manages:**
 - VPC with public and private subnets across 2 availability zones
 - Internet Gateway, NAT Gateway, route tables
 - EKS cluster (control plane + managed node group)
 - IAM roles for the cluster, node group, and GitHub Actions pipeline
 - OIDC provider for keyless CI/CD
 
-Rebuild the cluster from scratch:
+**Rebuild the cluster from scratch:**
 
 ```bash
 export AWS_PROFILE=mohamed
@@ -154,7 +152,7 @@ Prometheus scrapes metrics from:
 
 Grafana comes pre-loaded with Kubernetes dashboards. The **Kubernetes / Compute Resources / Cluster** dashboard shows real-time CPU and memory usage broken down by namespace.
 
-Access Grafana:
+**Access Grafana:**
 
 ```bash
 kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
@@ -168,7 +166,7 @@ kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
 
 ## How to Deploy
 
-Prerequisites: AWS CLI, kubectl, Terraform, Helm, Docker
+**Prerequisites:** AWS CLI, kubectl, Terraform, Helm, Docker
 
 **1. Provision infrastructure**
 ```bash
@@ -193,6 +191,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ```bash
 kubectl apply -f argocd-app.yaml
 ```
+ArgoCD will sync the `k8s/` manifests and deploy the app automatically.
 
 **5. Install Prometheus + Grafana**
 ```bash
@@ -204,10 +203,10 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
 
 **6. Verify**
 ```bash
-kubectl get pods -n default
-kubectl get pods -n argocd
-kubectl get pods -n monitoring
-curl http://<LoadBalancer-URL>/
+kubectl get pods -n default      # app pods
+kubectl get pods -n argocd       # ArgoCD
+kubectl get pods -n monitoring   # Prometheus + Grafana
+curl http://<LoadBalancer-URL>/  # should return app response
 ```
 
 ---
@@ -229,16 +228,16 @@ curl http://<LoadBalancer-URL>/
 
 **OIDC over static keys** — the pipeline authenticates to AWS using a temporary token scoped to a single IAM role. No secrets stored in GitHub, no rotation needed, no blast radius if the repo is compromised.
 
-**Separate IAM roles** — the pipeline role can push to ECR and trigger deployments. The app's instance role can only read the one secret it needs. If either is compromised, the damage stays contained.
+**Separate IAM roles** — the pipeline role can push to ECR and trigger deployments. The app's instance role can only read the one secret it needs. If either is compromised, the damage is contained.
 
 **GitOps over direct apply** — ArgoCD means the cluster state is always a reflection of what's in Git. No one-off `kubectl apply` commands that leave the cluster in an undocumented state.
 
-**Terraform remote state** — S3 backend with DynamoDB locking means infrastructure state is shared and consistent. No two engineers can run `apply` at the same time.
+**Terraform remote state** — S3 backend with DynamoDB locking means the infrastructure state is shared and consistent, and no two people can run `apply` at the same time.
 
 ---
 
 ## Author
 
-Mohamed Ahmed — [GitHub](https://github.com/mohamedgit522) · [LinkedIn](https://www.linkedin.com/in/mohamed-ahmed-1a428320a/)
+Mohamed Ahmed — [GitHub](https://github.com/mohamedgit522) · [LinkedIn](https://www.linkedin.com/in/mohamed-ahmed-71640b179/)
 
 DevOps Engineer · London, UK
