@@ -238,6 +238,6 @@ curl http://<LoadBalancer-URL>/  # should return app response
 
 ## Author
 
-Mohamed Ahmed — [GitHub](https://github.com/mohamedgit522) · [LinkedIn](https://www.linkedin.com/in/mohamed-ahmed-71640b179/)
+Mohamed Ahmed — [GitHub](https://github.com/mohamedgit522) · [LinkedIn](https://www.linkedin.com/in/mohamed-ahmed-1a428320a/)
 
 DevOps Engineer · London, UK
