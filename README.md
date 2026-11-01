@@ -1,0 +1,1 @@
+pbpaste > ~/devops-journey/eks-project/README.md
