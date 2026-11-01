@@ -62,7 +62,6 @@ EKS Cluster (eu-west-1)
 ## Repository Structure
 
 ​```
-
 eks-project/
 ├── app/
 │   ├── app.py
