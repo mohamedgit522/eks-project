@@ -14,6 +14,8 @@ The entire infrastructure is defined in Terraform. Tear it down, run `terraform 
 
 ## Architecture
 
+```
+
 Developer pushes to main
 │
 ▼
@@ -37,7 +39,7 @@ EKS Cluster (eu-west-1)
 ├── Prometheus — scrapes metrics across all namespaces
 └── Grafana — dashboards for CPU, memory, pod health
 
-
+```
 
 ---
 
@@ -58,6 +60,8 @@ EKS Cluster (eu-west-1)
 ---
 
 ## Repository Structure
+
+```
 
 eks-project/
 ├── app/
@@ -80,6 +84,7 @@ eks-project/
 └── workflows/
 └── deploy.yml
 
+```
 
 ---
 
