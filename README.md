@@ -1,6 +1,6 @@
 # EKS Production-Grade Deployment
 
-A production-style Kubernetes project built on AWS EKS. Covers infrastructure provisioning, containerised app deployment, GitOps-based continuous delivery, TLS certificate management, and cluster observability — all wired together and automated.
+A production-style Kubernetes project built on AWS EKS. Covers infrastructure provisioning, containerised app deployment, GitOps-based continuous delivery, and cluster observability — all wired together and automated.
 
 ---
 
@@ -34,7 +34,6 @@ ArgoCD (running in cluster)
 EKS Cluster (eu-west-1)
   ├── 2x worker nodes (managed node group)
   ├── Flask app — 2 replicas behind a LoadBalancer
-  ├── cert-manager — handles TLS certificates
   ├── Prometheus — scrapes metrics across all namespaces
   └── Grafana — dashboards for CPU, memory, pod health
 </pre>
@@ -51,7 +50,6 @@ EKS Cluster (eu-west-1)
 | Orchestration | Kubernetes (EKS v1.31) |
 | GitOps | ArgoCD |
 | CI/CD | GitHub Actions (OIDC — no static keys) |
-| TLS | cert-manager |
 | Metrics | Prometheus + Grafana (kube-prometheus-stack) |
 | App | Python Flask |
 
@@ -84,7 +82,7 @@ eks-project/
 ├── argocd-app.yaml
 └── .github/
     └── workflows/
-        └── deploy.yml
+        └── ci.yml
 </pre>
 
 ---
@@ -120,7 +118,7 @@ ArgoCD runs inside the cluster and watches the `k8s/` folder in this repo. It po
 
 ## Infrastructure
 
-Everything is provisioned with Terraform using a remote S3 backend with DynamoDB state locking.
+Everything is provisioned with Terraform using a remote S3 backend with native state locking (use_lockfile).
 
 **What Terraform manages:**
 - VPC with public and private subnets across 2 availability zones
@@ -182,18 +180,13 @@ kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-**3. Install cert-manager**
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
-```
-
-**4. Apply the ArgoCD Application manifest**
+**3. Apply the ArgoCD Application manifest**
 ```bash
 kubectl apply -f argocd-app.yaml
 ```
 ArgoCD will sync the `k8s/` manifests and deploy the app automatically.
 
-**5. Install Prometheus + Grafana**
+**4. Install Prometheus + Grafana**
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
@@ -201,7 +194,7 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring --create-namespace
 ```
 
-**6. Verify**
+**5. Verify**
 ```bash
 kubectl get pods -n default      # app pods
 kubectl get pods -n argocd       # ArgoCD
@@ -210,6 +203,29 @@ curl http://<LoadBalancer-URL>/  # should return app response
 ```
 
 ---
+
+## Tearing It Down
+
+Order matters. The app's Service of type LoadBalancer makes Kubernetes create an AWS load balancer and a k8s-elb security group that Terraform never sees. If they still exist, terraform destroy hangs on the VPC.
+
+ArgoCD also has selfHeal enabled, so deleting the Service on its own isn't enough: ArgoCD recreates it. Remove the ArgoCD Application first.
+
+```bash
+# 1. Stop ArgoCD managing the app
+kubectl delete -f argocd-app.yaml
+
+# 2. Delete the LoadBalancer service so AWS removes the load balancer
+kubectl delete svc eks-project-app
+
+# 3. Wait until the load balancer has actually gone
+aws elb describe-load-balancers --region eu-west-1
+
+# 4. Destroy the infrastructure
+cd infra && terraform destroy
+```
+
+If destroy still hangs on the VPC, delete any leftover k8s-elb-* security groups in it and run destroy again.
+
 
 ## Screenshots
 
@@ -228,11 +244,11 @@ curl http://<LoadBalancer-URL>/  # should return app response
 
 **OIDC over static keys** — the pipeline authenticates to AWS using a temporary token scoped to a single IAM role. No secrets stored in GitHub, no rotation needed, no blast radius if the repo is compromised.
 
-**Separate IAM roles** — the pipeline role can push to ECR and trigger deployments. The app's instance role can only read the one secret it needs. If either is compromised, the damage is contained.
+**Separate IAM roles** — the pipeline role can push to ECR and trigger deployments. It never touches the cluster; ArgoCD handles deployments from inside it.
 
 **GitOps over direct apply** — ArgoCD means the cluster state is always a reflection of what's in Git. No one-off `kubectl apply` commands that leave the cluster in an undocumented state.
 
-**Terraform remote state** — S3 backend with DynamoDB locking means the infrastructure state is shared and consistent, and no two people can run `apply` at the same time.
+**Terraform remote state** — S3 backend with native state locking means the infrastructure state is shared and consistent, and no two people can run `apply` at the same time.
 
 ---
 
