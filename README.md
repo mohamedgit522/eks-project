@@ -124,8 +124,8 @@ Everything is provisioned with Terraform using a remote S3 backend with native s
 - VPC with public and private subnets across 2 availability zones
 - Internet Gateway, NAT Gateway, route tables
 - EKS cluster (control plane + managed node group)
-- IAM roles for the cluster, node group, and GitHub Actions pipeline
-- OIDC provider for keyless CI/CD
+- IAM roles for the cluster and node group
+- The GitHub Actions OIDC role and the ECR repository are created separately.
 
 **Rebuild the cluster from scratch:**
 
@@ -244,7 +244,7 @@ If destroy still hangs on the VPC, delete any leftover k8s-elb-* security groups
 
 **OIDC over static keys** — the pipeline authenticates to AWS using a temporary token scoped to a single IAM role. No secrets stored in GitHub, no rotation needed, no blast radius if the repo is compromised.
 
-**Separate IAM roles** — the pipeline role can push to ECR and trigger deployments. It never touches the cluster; ArgoCD handles deployments from inside it.
+**Separate IAM roles** — the pipeline role can only push images to ECR. It never touches the cluster; ArgoCD handles deployments from inside it.
 
 **GitOps over direct apply** — ArgoCD means the cluster state is always a reflection of what's in Git. No one-off `kubectl apply` commands that leave the cluster in an undocumented state.
 
